@@ -3,7 +3,7 @@ Native Media
 Native Media is an Android sample that uses OpenMAX AL to play a video.
 
 Note: This sample requires an MPEG-2 Transport Stream file to be
-placed in /sdcard/NativeMedia.ts and encoded as:
+placed in app/src/main/assets/clips/NativeMedia.ts and encoded as:
 ```
   video: H.264 baseline profile
   audio: AAC LC stereo
@@ -11,11 +11,11 @@ placed in /sdcard/NativeMedia.ts and encoded as:
 For demonstration purposes we have supplied such a .ts file, any
 actual stream must be created according to the MPEG-2 specification.
 
-This sample uses the new [Gradle Experimental Android plugin](http://tools.android.com/tech-docs/new-build-system/gradle-experimental) with C++ support.
+This sample uses the new [Android Studio CMake plugin](http://tools.android.com/tech-docs/external-c-builds) with C++ support.
 
 Pre-requisites
 --------------
-- Android Studio 1.3+ with [NDK](https://developer.android.com/ndk/) bundle.
+- Android Studio 2.2+ with [NDK](https://developer.android.com/ndk/) bundle.
 
 Getting Started
 ---------------
@@ -30,6 +30,11 @@ Getting Started
 Screenshots
 -----------
 ![screenshot](screenshot.png)
+
+
+Known Issues
+------------
+- Android-N preoview: native player path is not working, under debug now
 
 Support
 -------

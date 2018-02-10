@@ -4,4 +4,7 @@
 local.properties
 build
 *~
+.externalNativeBuild
+libwebp
 .DS_Store
+

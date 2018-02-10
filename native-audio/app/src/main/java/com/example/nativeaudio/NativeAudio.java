@@ -16,13 +16,17 @@
 
 package com.example.nativeaudio;
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
@@ -33,9 +37,12 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.Spinner;
 import android.widget.Toast;
 
-public class NativeAudio extends Activity {
+public class NativeAudio extends Activity
+        implements ActivityCompat.OnRequestPermissionsResultCallback {
+
 
     //static final String TAG = "NativeAudio";
+    private static final int AUDIO_ECHO_REQUEST = 0;
 
     static final int CLIP_NONE = 0;
     static final int CLIP_HELLO = 1;
@@ -144,138 +151,155 @@ public class NativeAudio extends Activity {
             }
         });
 
-        ((Button) findViewById(R.id.uri_soundtrack)).setOnClickListener(new OnClickListener() {
-            boolean created = false;
-            public void onClick(View view) {
-                if (!created && URI != null) {
-                    created = createUriAudioPlayer(URI);
+        // native uriPlayer is broken in android 21 and over, internal bug id: b/29321867
+        // will re-open after it is fixed in later OSes
+        if (Build.VERSION.SDK_INT <= 19) {
+            ((Button) findViewById(R.id.uri_soundtrack)).setOnClickListener(new OnClickListener() {
+                boolean created = false;
+                public void onClick(View view) {
+                    if (!created && URI != null) {
+                        created = createUriAudioPlayer(URI);
+                    }
                 }
-             }
-        });
+            });
 
-        ((Button) findViewById(R.id.pause_uri)).setOnClickListener(new OnClickListener() {
-            public void onClick(View view) {
-                setPlayingUriAudioPlayer(false);
-             }
-        });
-
-        ((Button) findViewById(R.id.play_uri)).setOnClickListener(new OnClickListener() {
-            public void onClick(View view) {
-                setPlayingUriAudioPlayer(true);
-             }
-        });
-
-        ((Button) findViewById(R.id.loop_uri)).setOnClickListener(new OnClickListener() {
-            boolean isLooping = false;
-            public void onClick(View view) {
-                isLooping = !isLooping;
-                setLoopingUriAudioPlayer(isLooping);
-             }
-        });
-
-        ((Button) findViewById(R.id.mute_left_uri)).setOnClickListener(new OnClickListener() {
-            boolean muted = false;
-            public void onClick(View view) {
-                muted = !muted;
-                setChannelMuteUriAudioPlayer(0, muted);
-             }
-        });
-
-        ((Button) findViewById(R.id.mute_right_uri)).setOnClickListener(new OnClickListener() {
-            boolean muted = false;
-            public void onClick(View view) {
-                muted = !muted;
-                setChannelMuteUriAudioPlayer(1, muted);
-             }
-        });
-
-        ((Button) findViewById(R.id.solo_left_uri)).setOnClickListener(new OnClickListener() {
-            boolean soloed = false;
-            public void onClick(View view) {
-                soloed = !soloed;
-                setChannelSoloUriAudioPlayer(0, soloed);
-             }
-        });
-
-        ((Button) findViewById(R.id.solo_right_uri)).setOnClickListener(new OnClickListener() {
-            boolean soloed = false;
-            public void onClick(View view) {
-                soloed = !soloed;
-                setChannelSoloUriAudioPlayer(1, soloed);
-             }
-        });
-
-        ((Button) findViewById(R.id.mute_uri)).setOnClickListener(new OnClickListener() {
-            boolean muted = false;
-            public void onClick(View view) {
-                muted = !muted;
-                setMuteUriAudioPlayer(muted);
-             }
-        });
-
-        ((Button) findViewById(R.id.enable_stereo_position_uri)).setOnClickListener(
-                new OnClickListener() {
-            boolean enabled = false;
-            public void onClick(View view) {
-                enabled = !enabled;
-                enableStereoPositionUriAudioPlayer(enabled);
-             }
-        });
-
-        ((Button) findViewById(R.id.channels_uri)).setOnClickListener(new OnClickListener() {
-            public void onClick(View view) {
-                if (numChannelsUri == 0) {
-                    numChannelsUri = getNumChannelsUriAudioPlayer();
+            ((Button) findViewById(R.id.pause_uri)).setOnClickListener(new OnClickListener() {
+                public void onClick(View view) {
+                    setPlayingUriAudioPlayer(false);
                 }
-                Toast.makeText(NativeAudio.this, "Channels: " + numChannelsUri,
-                        Toast.LENGTH_SHORT).show();
-             }
-        });
+            });
 
-        ((SeekBar) findViewById(R.id.volume_uri)).setOnSeekBarChangeListener(
-                new OnSeekBarChangeListener() {
-            int lastProgress = 100;
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (BuildConfig.DEBUG && !(progress >= 0 && progress <= 100)) {
-                    throw new AssertionError();
+            ((Button) findViewById(R.id.play_uri)).setOnClickListener(new OnClickListener() {
+                public void onClick(View view) {
+                    setPlayingUriAudioPlayer(true);
                 }
-                lastProgress = progress;
-            }
-            public void onStartTrackingTouch(SeekBar seekBar) {
-            }
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                int attenuation = 100 - lastProgress;
-                int millibel = attenuation * -50;
-                setVolumeUriAudioPlayer(millibel);
-            }
-        });
+            });
 
-        ((SeekBar) findViewById(R.id.pan_uri)).setOnSeekBarChangeListener(
-                new OnSeekBarChangeListener() {
-            int lastProgress = 100;
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (BuildConfig.DEBUG && !(progress >= 0 && progress <= 100)) {
-                    throw new AssertionError();
-                }               
-                lastProgress = progress;
-            }
-            public void onStartTrackingTouch(SeekBar seekBar) {
-            }
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                int permille = (lastProgress - 50) * 20;
-                setStereoPositionUriAudioPlayer(permille);
-            }
-        });
+            ((Button) findViewById(R.id.loop_uri)).setOnClickListener(new OnClickListener() {
+                boolean isLooping = false;
+                public void onClick(View view) {
+                    isLooping = !isLooping;
+                    setLoopingUriAudioPlayer(isLooping);
+                }
+            });
+
+            ((Button) findViewById(R.id.mute_left_uri)).setOnClickListener(new OnClickListener() {
+                boolean muted = false;
+                public void onClick(View view) {
+                    muted = !muted;
+                    setChannelMuteUriAudioPlayer(0, muted);
+                }
+            });
+
+            ((Button) findViewById(R.id.mute_right_uri)).setOnClickListener(new OnClickListener() {
+                boolean muted = false;
+                public void onClick(View view) {
+                    muted = !muted;
+                    setChannelMuteUriAudioPlayer(1, muted);
+                }
+            });
+
+            ((Button) findViewById(R.id.solo_left_uri)).setOnClickListener(new OnClickListener() {
+                boolean soloed = false;
+                public void onClick(View view) {
+                    soloed = !soloed;
+                    setChannelSoloUriAudioPlayer(0, soloed);
+                }
+            });
+
+            ((Button) findViewById(R.id.solo_right_uri)).setOnClickListener(new OnClickListener() {
+                boolean soloed = false;
+                public void onClick(View view) {
+                    soloed = !soloed;
+                    setChannelSoloUriAudioPlayer(1, soloed);
+                }
+            });
+
+            ((Button) findViewById(R.id.mute_uri)).setOnClickListener(new OnClickListener() {
+                boolean muted = false;
+                public void onClick(View view) {
+                    muted = !muted;
+                    setMuteUriAudioPlayer(muted);
+                }
+            });
+
+            ((Button) findViewById(R.id.enable_stereo_position_uri)).setOnClickListener(
+                    new OnClickListener() {
+                        boolean enabled = false;
+                        public void onClick(View view) {
+                            enabled = !enabled;
+                            enableStereoPositionUriAudioPlayer(enabled);
+                        }
+                    });
+
+            ((Button) findViewById(R.id.channels_uri)).setOnClickListener(new OnClickListener() {
+                public void onClick(View view) {
+                    if (numChannelsUri == 0) {
+                        numChannelsUri = getNumChannelsUriAudioPlayer();
+                    }
+                    Toast.makeText(NativeAudio.this, "Channels: " + numChannelsUri,
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            ((SeekBar) findViewById(R.id.volume_uri)).setOnSeekBarChangeListener(
+                    new OnSeekBarChangeListener() {
+                        int lastProgress = 100;
+                        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                            if (BuildConfig.DEBUG && !(progress >= 0 && progress <= 100)) {
+                                throw new AssertionError();
+                            }
+                            lastProgress = progress;
+                        }
+                        public void onStartTrackingTouch(SeekBar seekBar) {
+                        }
+                        public void onStopTrackingTouch(SeekBar seekBar) {
+                            int attenuation = 100 - lastProgress;
+                            int millibel = attenuation * -50;
+                            setVolumeUriAudioPlayer(millibel);
+                        }
+                    });
+
+            ((SeekBar) findViewById(R.id.pan_uri)).setOnSeekBarChangeListener(
+                    new OnSeekBarChangeListener() {
+                        int lastProgress = 100;
+                        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                            if (BuildConfig.DEBUG && !(progress >= 0 && progress <= 100)) {
+                                throw new AssertionError();
+                            }
+                            lastProgress = progress;
+                        }
+                        public void onStartTrackingTouch(SeekBar seekBar) {
+                        }
+                        public void onStopTrackingTouch(SeekBar seekBar) {
+                            int permille = (lastProgress - 50) * 20;
+                            setStereoPositionUriAudioPlayer(permille);
+                        }
+                    });
+        } else {
+            int[]  uriIds = { R.id.uri_soundtrack, R.id.pause_uri,
+                              R.id.play_uri,       R.id.loop_uri,
+                              R.id.mute_left_uri,  R.id.mute_right_uri,
+                              R.id.solo_left_uri,  R.id.solo_right_uri,
+                              R.id.mute_uri,       R.id.enable_stereo_position_uri,
+                              R.id.channels_uri,   R.id.volume_uri,
+                              R.id.pan_uri,        R.id.uri_spinner,};
+            for(int id : uriIds)
+                findViewById(id).setVisibility(View.GONE);
+        }
 
         ((Button) findViewById(R.id.record)).setOnClickListener(new OnClickListener() {
-            boolean created = false;
             public void onClick(View view) {
-                if (!created) {
-                    created = createAudioRecorder();
+                int status = ActivityCompat.checkSelfPermission(NativeAudio.this,
+                        Manifest.permission.RECORD_AUDIO);
+                if (status != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(
+                            NativeAudio.this,
+                            new String[]{Manifest.permission.RECORD_AUDIO},
+                            AUDIO_ECHO_REQUEST);
+                    return;
                 }
-                if (created) {
-                    startRecording();
-                }
+                recordAudio();
             }
         });
 
@@ -288,7 +312,18 @@ public class NativeAudio extends Activity {
 
     }
 
-    /** Called when the activity is about to be destroyed. */
+    // Single out recording for run-permission needs
+    static boolean created = false;
+    private void recordAudio() {
+        if (!created) {
+            created = createAudioRecorder();
+        }
+        if (created) {
+            startRecording();
+        }
+    }
+
+   /** Called when the activity is about to be destroyed. */
     @Override
     protected void onPause()
     {
@@ -307,6 +342,37 @@ public class NativeAudio extends Activity {
     {
         shutdown();
         super.onDestroy();
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        /*
+         * if any permission failed, the sample could not play
+         */
+        if (AUDIO_ECHO_REQUEST != requestCode) {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+            return;
+        }
+
+        if (grantResults.length != 1  ||
+                grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+            /*
+             * When user denied the permission, throw a Toast to prompt that RECORD_AUDIO
+             * is necessary; on UI, we display the current status as permission was denied so
+             * user know what is going on.
+             * This application go back to the original state: it behaves as if the button
+             * was not clicked. The assumption is that user will re-click the "start" button
+             * (to retry), or shutdown the app in normal way.
+             */
+            Toast.makeText(getApplicationContext(),
+                    getString(R.string.NeedRecordAudioPermission),
+                    Toast.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+
+        // The callback runs on app's thread, so we are safe to resume the action
+        recordAudio();
     }
 
     /** Native methods, implemented in jni folder */

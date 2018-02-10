@@ -1,32 +1,40 @@
-apply plugin: 'com.android.model.application'
+apply plugin: 'com.android.application'
 
-model {
-    android {
-        compileSdkVersion = 23
-        buildToolsVersion = "23.0.2"
+android {
+    compileSdkVersion 25
 
-        defaultConfig.with {
-            applicationId="com.google.sample.echo"
-            minSdkVersion.apiLevel = 17
-            targetSdkVersion.apiLevel = 22
-            versionCode = 1
-            versionName = "1.0"
+    defaultConfig {
+        applicationId 'com.google.sample.echo'
+        /*
+           To run on earlier version of Android than android-21, do:
+             *) set this minSDKVersion and cmake's ANDROID_PLATFORM to your version
+             *) set ANDROID_STL to c++_static for some very earlier version android.
+         */
+        minSdkVersion 23
+        targetSdkVersion 25
+        versionCode 1
+        versionName '1.0'
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_static'
+            }
         }
     }
-
-    android.ndk {
-        moduleName = "echo"
-        cppFlags.add("-std=c++11")
-        ldLibs.addAll(['android', 'log', 'OpenSLES'])
-        stl     = "gnustl_static"
-    }
-    android.buildTypes {
+    buildTypes {
         release {
-            minifyEnabled=false
-            proguardFiles.add(file('proguard-android.txt'))
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+                          'proguard-rules.pro'
         }
     }
-    android.productFlavors {
-        create('all')
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+        }
     }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:25.4.0'
 }
